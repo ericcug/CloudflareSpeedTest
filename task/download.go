@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"sort"
@@ -31,6 +32,7 @@ var (
 
 	TestCount = defaultTestNum
 	MinSpeed  = defaultMinSpeed
+	Interface string
 )
 
 func checkDownloadDefault() {
@@ -108,8 +110,38 @@ func getDialContext(ip *net.IPAddr) func(ctx context.Context, network, address s
 		fakeSourceAddr = fmt.Sprintf("[%s]:%d", ip.String(), TCPPort)
 	}
 	return func(ctx context.Context, network, address string) (net.Conn, error) {
-		return (&net.Dialer{}).DialContext(ctx, network, fakeSourceAddr)
+		dialer := &net.Dialer{}
+		if Interface != "" {
+			localAddr := getLocalAddr(ip)
+			if localAddr != nil {
+				dialer.LocalAddr = localAddr
+			}
+		}
+		return dialer.DialContext(ctx, network, fakeSourceAddr)
 	}
+}
+
+func getLocalAddr(ip *net.IPAddr) *net.TCPAddr {
+	iface, err := net.InterfaceByName(Interface)
+	if err != nil {
+		log.Fatalf("无法找到网络接口 %s: %v", Interface, err)
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		log.Fatalf("无法获取网络接口 %s 的地址: %v", Interface, err)
+	}
+	isV4 := isIPv4(ip.String())
+	for _, addr := range addrs {
+		if ipNet, ok := addr.(*net.IPNet); ok {
+			if isV4 && ipNet.IP.To4() != nil {
+				return &net.TCPAddr{IP: ipNet.IP}
+			}
+			if !isV4 && ipNet.IP.To4() == nil {
+				return &net.TCPAddr{IP: ipNet.IP}
+			}
+		}
+	}
+	return nil
 }
 
 // 统一的请求报错调试输出
