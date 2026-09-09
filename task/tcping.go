@@ -100,6 +100,7 @@ func (p *Ping) tcping(ip *net.IPAddr) (bool, time.Duration) {
 		if localAddr != nil {
 			dialer.LocalAddr = localAddr
 		}
+		bindInterfaceToDialer(dialer, Interface)
 	}
 	conn, err := dialer.Dial("tcp", fullAddress)
 	if err != nil {

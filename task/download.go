@@ -116,6 +116,7 @@ func getDialContext(ip *net.IPAddr) func(ctx context.Context, network, address s
 			if localAddr != nil {
 				dialer.LocalAddr = localAddr
 			}
+			bindInterfaceToDialer(dialer, Interface)
 		}
 		return dialer.DialContext(ctx, network, fakeSourceAddr)
 	}
